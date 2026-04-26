@@ -209,7 +209,7 @@ document.querySelectorAll(".btn").forEach(el => {
   el.addEventListener("pointerleave", () => release(el.id));
 });
 
-
+// using left and right click as B and A when point is not over a clickable button
 const controller = document.getElementById("controller"); 
 controller.addEventListener("contextmenu", e => e.preventDefault());
 controller.addEventListener("pointerdown", (e) => {
@@ -221,7 +221,6 @@ controller.addEventListener("pointerdown", (e) => {
     }
     updateControllerState();
 });
-let lastButtons = 0;
 controller.addEventListener("pointermove", (e) => {
     if (e.buttons === 1) {
         mouseControllerState |= map["btnB"]; // left click down for press B
@@ -275,32 +274,65 @@ window.addEventListener("keyup", e => {
 
 
 /* ---------- GAMEPAD ---------- */
+// tested on Xbox Series S|X and PlayStation 5 controllers
+function readStandard(gp) {
+  let newState = 0;
+
+  if (gp.buttons[12]?.pressed) newState |= NES_BUTTONS.UP;
+  if (gp.buttons[13]?.pressed) newState |= NES_BUTTONS.DOWN;
+  if (gp.buttons[14]?.pressed) newState |= NES_BUTTONS.LEFT;
+  if (gp.buttons[15]?.pressed) newState |= NES_BUTTONS.RIGHT;
+    
+  if (gp.axes[1] && gp.axes[1] < -0.5) newState |= NES_BUTTONS.UP;
+  if (gp.axes[1] && gp.axes[1] > 0.5) newState |= NES_BUTTONS.DOWN;
+        
+  if (gp.axes[0] && gp.axes[0] < -0.5) newState |= NES_BUTTONS.LEFT;
+  if (gp.axes[0] && gp.axes[0] > 0.5) newState |= NES_BUTTONS.RIGHT;
+        
+  if (gp.buttons[8]?.pressed) newState |= NES_BUTTONS.SELECT;
+  if (gp.buttons[9]?.pressed) newState |= NES_BUTTONS.START;
+
+  if (gp.buttons[2]?.pressed) newState |= NES_BUTTONS.B;
+  if (gp.buttons[3]?.pressed) newState |= NES_BUTTONS.B;
+  
+  if (gp.buttons[0]?.pressed) newState |= NES_BUTTONS.A;
+  if (gp.buttons[1]?.pressed) newState |= NES_BUTTONS.A;
+ 
+  return newState;
+}
+
+//DragonRise Inc. Controller (Vendor: 0079 Product: 0126)
+function readNonstandard(gp) {
+  let newState = 0;
+    
+  if (gp.axes[1] && gp.axes[1] < -0.5) newState |= NES_BUTTONS.UP;
+  if (gp.axes[1] && gp.axes[1] > 0.5) newState |= NES_BUTTONS.DOWN;
+        
+  if (gp.axes[0] && gp.axes[0] < -0.5) newState |= NES_BUTTONS.LEFT;
+  if (gp.axes[0] && gp.axes[0] > 0.5) newState |= NES_BUTTONS.RIGHT;
+        
+  if (gp.buttons[8]?.pressed) newState |= NES_BUTTONS.SELECT;
+  if (gp.buttons[9]?.pressed) newState |= NES_BUTTONS.START;
+
+  if (gp.buttons[0]?.pressed) newState |= NES_BUTTONS.B;
+  if (gp.buttons[3]?.pressed) newState |= NES_BUTTONS.B;
+        
+  if (gp.buttons[1]?.pressed) newState |= NES_BUTTONS.A;
+  if (gp.buttons[2]?.pressed) newState |= NES_BUTTONS.A;
+  
+  return newState;
+}
+
 function pollGamepad() {
-  const gp = navigator.getGamepads()[0];
-  if (gp) {
-    let newState = 0;
-
-    if (gp.buttons[12]?.pressed) newState |= NES_BUTTONS.UP;
-    if (gp.buttons[13]?.pressed) newState |= NES_BUTTONS.DOWN;
-    if (gp.buttons[14]?.pressed) newState |= NES_BUTTONS.LEFT;
-    if (gp.buttons[15]?.pressed) newState |= NES_BUTTONS.RIGHT;
-    
-    if (gp.axes[1] && gp.axes[1] < -0.5) newState |= NES_BUTTONS.UP;
-    if (gp.axes[1] && gp.axes[1] > 0.5) newState |= NES_BUTTONS.DOWN;
-        
-    if (gp.axes[0] && gp.axes[0] < -0.5) newState |= NES_BUTTONS.LEFT;
-    if (gp.axes[0] && gp.axes[0] > 0.5) newState |= NES_BUTTONS.RIGHT;
-        
-    if (gp.buttons[8]?.pressed) newState |= NES_BUTTONS.SELECT;
-    if (gp.buttons[9]?.pressed) newState |= NES_BUTTONS.START;
-
-    if (gp.buttons[0]?.pressed) newState |= NES_BUTTONS.B;
-    if (gp.buttons[3]?.pressed) newState |= NES_BUTTONS.B;
-        
-    if (gp.buttons[1]?.pressed) newState |= NES_BUTTONS.A;
-    if (gp.buttons[2]?.pressed) newState |= NES_BUTTONS.A;
-    
-    gamepadControllerState = newState;
+  for (const gp of navigator.getGamepads()) {
+    if (!gp) continue;
+    if (gp.mapping === "standard") {
+      gamepadControllerState = readStandard(gp);
+    }
+    else {
+      gamepadControllerState = readNonstandard(gp);
+    }
+    break; // only use the first controller found
   }
   // putting updateControllerState here rather than inside the if (gp) block ensures
   // state is periodically sent as a keep alive even if no gamepad is detected
