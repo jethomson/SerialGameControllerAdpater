@@ -531,9 +531,11 @@ void setup() {
 }
 
 
-const uint32_t period = 1000000 / 59.94; // microseconds
 void loop() {
+    const uint32_t period = 1000000 / 59.94; // microseconds
+    const uint8_t no_change_limit = (100000 / period) + 0.5; // number of periods in 100 ms, rounded
     static uint32_t pm = 0; // previous micros
+    static uint8_t no_change_cnt = 0;
 
     if ( (micros() - pm) >= period ) {
         pm += period; 
@@ -543,15 +545,21 @@ void loop() {
 #endif
 
         buttons_state = readController();
-        Link.write(buttons_state);
-
-#if defined DEBUG_CONSOLE
         static uint8_t prev_buttons_state = 0x00;
-        if (prev_buttons_state != buttons_state)
-        {
+        if (prev_buttons_state != buttons_state || no_change_cnt >= no_change_limit) {
+            // send buttons state on change or every about every 100 ms
+            // sending on change keeps from flooding the serial connection
+            // send about every 100 ms is a sort of keep alive and guards against lost transmissions
             prev_buttons_state = buttons_state;
+            no_change_cnt = 0;
+            Link.write(buttons_state);
+#if defined DEBUG_CONSOLE
             debugPrintButtons(buttons_state);
-        }
 #endif
+        }
+        else {
+            no_change_cnt++;
+        }
+
     }
 }
