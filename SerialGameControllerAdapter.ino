@@ -42,7 +42,7 @@ enum ControllerType : uint8_t {
     GP_NES = 1,    // wired NES controller
     GP_SNES = 2,   // wired SNES controller
     GP_PSX = 3,    // wired playstation controller using playstation connector
-    // bluetooth gamepad and bluetooth keyboard are combined to simplify the UI
+    // bluetooth gamepad and bluetooth keyboard are combined to simplify the potential UI
     CTL_BLUETOOTH_CONTROLLER = 5
 };
 
@@ -58,7 +58,6 @@ enum Buttons : uint8_t {
 };
 
 
-HardwareSerial Link(1);
 ControllerPtr ctl;
 
 volatile uint8_t buttons_state = 0x00;
@@ -465,14 +464,14 @@ void debugPrintButtons(uint8_t state) {
     if (state & Buttons::Right)  line += "Right ";
 
     if (line.length() == 0)
-        line = "None";
+        line = "--------";
 
     DEBUG_PRINTLN(line);
 }
 
 
 void controllerSelect() {
-    int b = Link.read(); // returns -1 if buffer is empty
+    int b = Serial1.read(); // returns -1 if buffer is empty
     if (CTL_NC <= b && b <= CTL_BLUETOOTH_CONTROLLER) {
         for (int i = 0; i < 3; i++) {
             digitalWrite(LED_PIN, LOW);
@@ -487,7 +486,7 @@ void controllerSelect() {
 
 
 void setup() {
-    Link.begin(115200, SERIAL_8N1, CONTROLLER_UART_RX, CONTROLLER_UART_TX);
+    Serial1.begin(115200, SERIAL_8N1, CONTROLLER_UART_RX, CONTROLLER_UART_TX);
 
     //DEBUG_BEGIN(74880);
     DEBUG_BEGIN(115200);
@@ -552,7 +551,7 @@ void loop() {
             // send about every 100 ms is a sort of keep alive and guards against lost transmissions
             prev_buttons_state = buttons_state;
             no_change_cnt = 0;
-            Link.write(buttons_state);
+            Serial1.write(buttons_state);
 #if defined DEBUG_CONSOLE
             debugPrintButtons(buttons_state);
 #endif
